@@ -1,0 +1,23 @@
+[package]
+name = "axum-pg-redis"
+version = "0.1.0"
+edition = "2021"
+default-run = "axum-pg-redis"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = "0.6.4"
+axum-macros = "0.3.2"
+chrono = "0.4.23"
+dotenv_codegen = "0.15.0"
+jsonwebtoken = "8.2.0"
+lazy_static = "1.4.0"
+log = "0.4.17"
+redis = "0.22.3"
+sea-orm = { version = "0.10.7", features = ["sqlx-postgres", "runtime-tokio-rustls", "macros"] }
+serde = "1.0.152"
+serde_json = "1.0.93"
+thiserror = "1.0.38"
+tokio = { version = "1.25.0", features = ["full"] }
+totp-rs = "^4.2.0"

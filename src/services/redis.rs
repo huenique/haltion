@@ -1,0 +1,26 @@
+use redis::Commands;
+
+pub struct RedisClient {
+    con: redis::Connection,
+}
+
+impl RedisClient {
+    pub async fn new() -> Result<Self, redis::RedisError> {
+        let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+        let con = client.get_connection()?;
+
+        Ok(Self { con })
+    }
+
+    pub async fn set_key(&mut self, key: &str, value: &u64) -> Result<(), redis::RedisError> {
+        self.con.set(key, value)
+    }
+
+    pub async fn get_key(&mut self, key: &str) -> Result<u64, redis::RedisError> {
+        self.con.get(key)
+    }
+
+    pub async fn del_key(&mut self, key: &str) -> Result<(), redis::RedisError> {
+        self.con.del(key)
+    }
+}
