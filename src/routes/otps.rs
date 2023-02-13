@@ -37,22 +37,14 @@ async fn verify(
 
 // TODO: Rate limit this route
 #[axum_macros::debug_handler]
-async fn authorize(
-    State(state): State<AppState>,
-    payload: Json<OtpPayload>,
-) -> Result<Json<TokenPayload>, AuthError> {
+async fn authorize(State(state): State<AppState>, payload: Json<OtpPayload>) {
     let mut redis = state.redis.lock().await;
-
-    let token = jwt::sign(payload.phone_number.to_owned()).await?;
-
+    let token = jwt::sign(payload.phone_number.to_owned()).await.unwrap();
     let phone_u64 = payload.phone_number.parse::<u64>().unwrap();
 
-    // redis.set_key(&token, &phone_u64).await?;
+    redis.set_key(&token, &phone_u64).await.unwrap();
 
-    Ok(Json(TokenPayload {
-        access_token: token,
-        token_type: constants::BEARER.to_string(),
-    }))
+    // TODO: Send OTP via SMS
 }
 
 impl From<jsonwebtoken::errors::Error> for AuthError {
