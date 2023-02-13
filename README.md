@@ -8,7 +8,7 @@ A fast, simple authorization and authentication server.
 
 - One-Time PIN (OTP) based on TOTP (Time-based One-Time Password), which is described in [IETF RFC 6238](https://www.rfc-editor.org/rfc/rfc6238).
 
-[![Haltion OTP](./docs/haltion-otp-flow.png)](https://www.youtube.com/watch?v=1Z1Z1Z1Z1Z1)
+![Haltion OTP](./docs/haltion-otp-flow.png)
 
 The diagram only serves as an example. In the real world, you might have a gateway or an edge router in front of Haltion.
 
@@ -27,7 +27,7 @@ The diagram only serves as an example. In the real world, you might have a gatew
 
 1. Clone the repo
 
-2. Create a `.env` file in the root directory and add the following environment variables:
+2. Create a copy of the `.env.example`, omit the `.example`:
 
 ```sh
 cp .env.example .env
