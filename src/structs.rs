@@ -1,4 +1,4 @@
-use crate::services::redis::RedisClient;
+use crate::utils::redis::RedisClient;
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
 use tokio::sync::Mutex;

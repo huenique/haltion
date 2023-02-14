@@ -1,8 +1,9 @@
+pub mod config;
 pub mod models;
 pub mod routes;
 pub mod services;
 pub mod structs;
-pub mod config;
+pub mod utils;
 
 use std::net::SocketAddr;
 

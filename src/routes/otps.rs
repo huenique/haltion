@@ -1,13 +1,16 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
-use crate::config::constants;
-use crate::services::jwt;
+use crate::config::constants::BEARER;
+use crate::utils::jwt;
+use crate::services::otps;
 use crate::structs::AppState;
 
 pub fn create_route() -> Router<AppState> {
@@ -16,20 +19,36 @@ pub fn create_route() -> Router<AppState> {
         .route("/otps", post(authorize))
 }
 
-async fn verify(
-    Path(otp): Path<String>,
-    State(state): State<AppState>,
-) -> Result<Json<TokenPayload>, StatusCode> {
+async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
-    let phone_number = redis.get_key(&otp).await.unwrap();
-    let token = jwt::sign(phone_number.to_string()).await.unwrap();
+
+    let phone_number = match otps::verify(&mut redis, &otp).await {
+        Ok(phone_number) => phone_number,
+        Err(err) => {
+            return (
+                err.status,
+                [("content-type", "application/json")],
+                json!({
+                    "detail": err.detail
+                })
+                .to_string(),
+            )
+        }
+    };
+
+    let token = jwt::sign(phone_number).await.unwrap();
 
     redis.del_key(&otp).await.unwrap();
 
-    Ok(Json(TokenPayload {
-        access_token: token,
-        token_type: constants::BEARER.to_string(),
-    }))
+    (
+        StatusCode::OK,
+        [("content-type", "application/json")],
+        json!({
+            "access_token": token,
+            "token_type": BEARER.to_string()
+        })
+        .to_string(),
+    )
 }
 
 // TODO: Rate limit this route
@@ -49,7 +68,7 @@ async fn authorize(
     Ok(Json(AuthResult { sms_sent: true }))
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OtpPayload {
     pub phone_number: String,
 }

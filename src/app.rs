@@ -1,5 +1,5 @@
+use crate::utils::redis::RedisClient;
 use crate::routes;
-use crate::services::redis::RedisClient;
 use crate::structs::AppState;
 use axum::Router;
 use dotenv_codegen::dotenv;
