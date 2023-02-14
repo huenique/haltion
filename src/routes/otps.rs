@@ -1,13 +1,10 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
-    response::Response,
     routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 use crate::config::constants;
 use crate::services::jwt;
@@ -22,7 +19,7 @@ pub fn create_route() -> Router<AppState> {
 async fn verify(
     Path(otp): Path<String>,
     State(state): State<AppState>,
-) -> Result<Json<TokenPayload>, AuthError> {
+) -> Result<Json<TokenPayload>, StatusCode> {
     let mut redis = state.redis.lock().await;
     let phone_number = redis.get_key(&otp).await.unwrap();
     let token = jwt::sign(phone_number.to_string()).await.unwrap();
@@ -37,36 +34,19 @@ async fn verify(
 
 // TODO: Rate limit this route
 #[axum_macros::debug_handler]
-async fn authorize(State(state): State<AppState>, payload: Json<OtpPayload>) {
+async fn authorize(
+    State(state): State<AppState>,
+    payload: Json<OtpPayload>,
+) -> Result<Json<AuthResult>, StatusCode> {
     let mut redis = state.redis.lock().await;
     let token = jwt::sign(payload.phone_number.to_owned()).await.unwrap();
-    let phone_u64 = payload.phone_number.parse::<u64>().unwrap();
 
-    redis.set_key(&token, &phone_u64).await.unwrap();
+    redis.set_key(&token, &payload.phone_number).await.unwrap();
 
     // TODO: Send OTP via SMS
-}
+    // ...
 
-impl From<jsonwebtoken::errors::Error> for AuthError {
-    fn from(error: jsonwebtoken::errors::Error) -> Self {
-        AuthError::JwtError(error)
-    }
-}
-
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
-            AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
-            AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error"),
-            AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
-            AuthError::JwtError(_) => (StatusCode::INTERNAL_SERVER_ERROR, "JWT error"),
-        };
-        let body = Json(json!({
-            "error": error_message,
-        }));
-        (status, body).into_response()
-    }
+    Ok(Json(AuthResult { sms_sent: true }))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -80,12 +60,7 @@ pub struct TokenPayload {
     pub token_type: String,
 }
 
-#[allow(dead_code)]
-#[derive(Debug)]
-enum AuthError {
-    WrongCredentials,
-    MissingCredentials,
-    TokenCreation,
-    InvalidToken,
-    JwtError(jsonwebtoken::errors::Error),
+#[derive(Debug, Serialize)]
+pub struct AuthResult {
+    pub sms_sent: bool,
 }
