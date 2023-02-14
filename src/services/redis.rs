@@ -1,13 +1,15 @@
 use redis::Commands;
 use std::error::Error;
 
+use crate::config::env::REDIS_URL;
+
 pub struct RedisClient {
     con: redis::Connection,
 }
 
 impl RedisClient {
     pub async fn new() -> Result<Self, redis::RedisError> {
-        let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+        let client = redis::Client::open(REDIS_URL.to_owned()).unwrap();
         let con = client.get_connection()?;
 
         Ok(Self { con })
