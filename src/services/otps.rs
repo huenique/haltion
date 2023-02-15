@@ -1,6 +1,9 @@
+use crate::utils::jwt;
 use crate::utils::redis::RedisClient;
 use axum::http::StatusCode;
 use redis::{ErrorKind, RedisError};
+use reqwest::Client;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct ServiceError {
@@ -50,7 +53,63 @@ pub async fn verify(redis: &mut RedisClient, otp: &String) -> Result<String, Ser
         }
     };
 
-    Ok(phone_number)
+    let token = jwt::sign(phone_number).await.unwrap();
+
+    redis.del_key(&otp).await.unwrap();
+
+    Ok(token)
+}
+
+/// Generates an OTP and sends it to the user's phone number.
+///
+/// # Arguments
+///
+/// * `redis` - A mutable reference to a `RedisClient` for storing the OTP.
+/// * `phone_number` - A reference to a `String` containing the user's phone number.
+/// * `sms_host` - A reference to a `String` containing the URL of the SMS API endpoint.
+/// * `req` - A `Client` for sending HTTP requests to the SMS API endpoint.
+///
+/// # Errors
+///
+/// Returns a `ServiceError` if there is an error generating the JWT, sending the SMS, or adding the token to Redis.
+///
+/// # Example
+///
+/// ```
+/// let mut redis = RedisClient::new("redis://localhost").await?;
+/// let phone_number = "+1234567890".to_owned();
+/// let sms_host = "https://example.com/sms".to_owned();
+/// let req = reqwest::Client::new();
+/// authorize(&mut redis, &phone_number, &sms_host, req).await?;
+/// ```
+pub async fn authorize(
+    redis: &mut RedisClient,
+    phone_number: &String,
+    sms_host: &String,
+    req: Client,
+) -> Result<(), ServiceError> {
+    // Generate JWT
+    let token = jwt::sign(phone_number.to_owned())
+        .await
+        .map_err(handle_jwt_error)?;
+
+    // Send SMS
+    let mut map = HashMap::new();
+    map.insert("recipient", phone_number);
+    map.insert("content", &token);
+    req.post(sms_host)
+        .json(&map)
+        .send()
+        .await
+        .map_err(handle_reqwest_error)?;
+
+    // Add token to redis
+    redis
+        .set_key(&token, phone_number)
+        .await
+        .map_err(handle_redis_error)?;
+
+    Ok(())
 }
 
 /// Convert a RedisError into a ServiceError.
@@ -102,4 +161,58 @@ fn handle_redis_error(e: RedisError) -> ServiceError {
     };
 
     ServiceError { detail, status }
+}
+
+/// Returns a `ServiceError` with an internal server error status and a detail message
+/// containing information about the JWT error that occurred.
+///
+/// # Arguments
+///
+/// * `e` - The `jsonwebtoken::errors::Error` that occurred.
+///
+/// # Returns
+///
+/// A `ServiceError` with an internal server error status and a detail message
+/// containing information about the JWT error that occurred.
+///
+/// # Example
+///
+/// ```
+/// let e = jsonwebtoken::errors::Error::InvalidSignature;
+/// let service_error = handle_jwt_error(e);
+/// assert_eq!(service_error.status, StatusCode::INTERNAL_SERVER_ERROR);
+/// assert_eq!(service_error.detail, "JWT error: Invalid signature");
+/// ```
+fn handle_jwt_error(e: jsonwebtoken::errors::Error) -> ServiceError {
+    ServiceError {
+        detail: format!("JWT error: {}", e.to_string()),
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+/// Returns a `ServiceError` with a bad gateway status and a detail message
+/// containing information about the Reqwest error that occurred.
+///
+/// # Arguments
+///
+/// * `e` - The `reqwest::Error` that occurred.
+///
+/// # Returns
+///
+/// A `ServiceError` with a bad gateway status and a detail message
+/// containing information about the Reqwest error that occurred.
+///
+/// # Example
+///
+/// ```
+/// let e = reqwest::Error::new(std::io::Error::new(std::io::ErrorKind::Other, "Custom error"));
+/// let service_error = handle_reqwest_error(e);
+/// assert_eq!(service_error.status, StatusCode::BAD_GATEWAY);
+/// assert_eq!(service_error.detail, "Reqwest error: error sending request for `http://example.com`: Custom error");
+/// ```
+fn handle_reqwest_error(e: reqwest::Error) -> ServiceError {
+    ServiceError {
+        detail: format!("Reqwest error: {}", e.to_string()),
+        status: StatusCode::BAD_GATEWAY,
+    }
 }
