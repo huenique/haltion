@@ -28,14 +28,14 @@ pub async fn sign(phone_number: String) -> Result<String, jsonwebtoken::errors::
     Ok(jsonwebtoken::encode(
         &Header::default(),
         &Claims::new(phone_number).await,
-        &EncodingKey::from_secret(env::JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(env::SECRET_KEY.as_bytes()),
     )?)
 }
 
 pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> {
     Ok(jsonwebtoken::decode(
         token,
-        &DecodingKey::from_secret(env::JWT_SECRET.as_bytes()),
+        &DecodingKey::from_secret(env::SECRET_KEY.as_bytes()),
         &Validation::default(),
     )
     .map(|data| data.claims)?)

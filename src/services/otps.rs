@@ -1,5 +1,5 @@
-use crate::utils::jwt;
 use crate::utils::redis::RedisClient;
+use crate::utils::{jwt, topt};
 use axum::http::StatusCode;
 use redis::{ErrorKind, RedisError};
 use reqwest::Client;
@@ -88,15 +88,15 @@ pub async fn authorize(
     sms_host: &String,
     req: Client,
 ) -> Result<(), ServiceError> {
-    // Generate JWT
-    let token = jwt::sign(phone_number.to_owned())
+    // generate an OTP
+    let otp = topt::generate_token()
         .await
-        .map_err(handle_jwt_error)?;
+        .map_err(|e| handle_generic_error(e, "Failed to generate OTP"))?;
 
     // Send SMS
     let mut map = HashMap::new();
     map.insert("recipient", phone_number);
-    map.insert("content", &token);
+    map.insert("content", &otp);
     req.post(sms_host)
         .json(&map)
         .send()
@@ -105,7 +105,7 @@ pub async fn authorize(
 
     // Add token to redis
     redis
-        .set_key(&token, phone_number)
+        .set_key(&otp, phone_number)
         .await
         .map_err(handle_redis_error)?;
 
@@ -163,33 +163,6 @@ fn handle_redis_error(e: RedisError) -> ServiceError {
     ServiceError { detail, status }
 }
 
-/// Returns a `ServiceError` with an internal server error status and a detail message
-/// containing information about the JWT error that occurred.
-///
-/// # Arguments
-///
-/// * `e` - The `jsonwebtoken::errors::Error` that occurred.
-///
-/// # Returns
-///
-/// A `ServiceError` with an internal server error status and a detail message
-/// containing information about the JWT error that occurred.
-///
-/// # Example
-///
-/// ```
-/// let e = jsonwebtoken::errors::Error::InvalidSignature;
-/// let service_error = handle_jwt_error(e);
-/// assert_eq!(service_error.status, StatusCode::INTERNAL_SERVER_ERROR);
-/// assert_eq!(service_error.detail, "JWT error: Invalid signature");
-/// ```
-fn handle_jwt_error(e: jsonwebtoken::errors::Error) -> ServiceError {
-    ServiceError {
-        detail: format!("JWT error: {}", e.to_string()),
-        status: StatusCode::INTERNAL_SERVER_ERROR,
-    }
-}
-
 /// Returns a `ServiceError` with a bad gateway status and a detail message
 /// containing information about the Reqwest error that occurred.
 ///
@@ -214,5 +187,21 @@ fn handle_reqwest_error(e: reqwest::Error) -> ServiceError {
     ServiceError {
         detail: format!("Reqwest error: {}", e.to_string()),
         status: StatusCode::BAD_GATEWAY,
+    }
+}
+
+/// Maps an error of a boxed trait object that implements the `std::error::Error` trait to a `ServiceError` type.
+///
+/// # Arguments
+///
+/// * `e` - A boxed trait object that implements the `std::error::Error` trait.
+///
+/// # Returns
+///
+/// A `ServiceError` struct that contains the error message and status code.
+fn handle_generic_error(e: Box<dyn std::error::Error>, title: &'static str) -> ServiceError {
+    ServiceError {
+        detail: format!("{}: {}", title, e),
+        status: StatusCode::INTERNAL_SERVER_ERROR,
     }
 }

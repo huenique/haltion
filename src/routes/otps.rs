@@ -29,6 +29,7 @@ async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl 
                 err.status,
                 [("content-type", "application/json")],
                 json!({
+                    "verified": false,
                     "detail": err.detail
                 })
                 .to_string(),
@@ -40,6 +41,7 @@ async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl 
         StatusCode::OK,
         [("content-type", "application/json")],
         json!({
+            "verified": true,
             "access_token": token,
             "token_type": BEARER.to_string()
         })
@@ -59,6 +61,7 @@ async fn authorize(State(state): State<AppState>, payload: Json<OtpPayload>) -> 
                 err.status,
                 [("content-type", "application/json")],
                 json!({
+                    "sms_sent": false,
                     "detail": err.detail
                 })
                 .to_string(),
