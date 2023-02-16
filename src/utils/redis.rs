@@ -1,16 +1,14 @@
 use redis::{aio::AsyncStream, AsyncCommands, Client};
 use tokio::macros::support::Pin;
 
-use crate::config::env::REDIS_URL;
-
 pub struct RedisClient {
     pub client: Client,
     pub con: redis::aio::Connection<Pin<Box<dyn AsyncStream + Send + Sync>>>,
 }
 
 impl RedisClient {
-    pub async fn new() -> Result<Self, redis::RedisError> {
-        let client = redis::Client::open(REDIS_URL.to_owned()).unwrap();
+    pub async fn new(redis_url: String) -> Result<Self, redis::RedisError> {
+        let client = redis::Client::open(redis_url).unwrap();
         let con = client.get_async_connection().await.unwrap();
 
         Ok(Self { client, con })

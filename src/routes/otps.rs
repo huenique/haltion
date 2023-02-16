@@ -1,5 +1,5 @@
 use crate::config::constants::BEARER;
-use crate::config::env::SMS_HOST;
+use crate::config::env::{SECRET_KEY, SMS_HOST};
 use crate::services::otps;
 use crate::structs::AppState;
 use axum::{
@@ -54,7 +54,15 @@ async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl 
 async fn authorize(State(state): State<AppState>, payload: Json<OtpPayload>) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
 
-    match otps::authorize(&mut redis, &payload.phone_number, &SMS_HOST, Client::new()).await {
+    match otps::authorize(
+        &mut redis,
+        &payload.phone_number,
+        &SMS_HOST,
+        Client::new(),
+        &SECRET_KEY,
+    )
+    .await
+    {
         Ok(_) => (),
         Err(err) => {
             return (

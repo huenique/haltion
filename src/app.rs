@@ -1,6 +1,7 @@
-use crate::utils::redis::RedisClient;
+use crate::config::env::REDIS_URL;
 use crate::routes;
 use crate::structs::AppState;
+use crate::utils::redis::RedisClient;
 use axum::Router;
 use dotenv_codegen::dotenv;
 use log::LevelFilter::Info;
@@ -21,7 +22,9 @@ pub async fn create_app() -> Router {
         .sqlx_logging_level(Info);
 
     let db = Database::connect(opt).await.unwrap();
-    let redis = Arc::new(Mutex::new(RedisClient::new().await.unwrap()));
+    let redis = Arc::new(Mutex::new(
+        RedisClient::new(REDIS_URL.to_owned()).await.unwrap(),
+    ));
 
     let state = AppState { db, redis };
 
