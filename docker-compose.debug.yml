@@ -1,0 +1,28 @@
+version: '3.4'
+
+services:
+  haltion:
+    image: haltion
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      DATABASE_URL: postgres://username:password@postgres:5432/haltion
+      REDIS_URL: redis://redis:6379
+      SECRET_KEY: secret_key
+      SMS_HOST: https://your_sms_gateway/
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: haltion
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+  redis:
+    image: redis:latest
