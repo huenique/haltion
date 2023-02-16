@@ -14,14 +14,10 @@ impl RedisClient {
         Ok(Self { client, con })
     }
 
-    pub async fn set_key(
-        &mut self,
-        key: &str,
-        value: &str,
-    ) -> Result<Vec<String>, redis::RedisError> {
+    pub async fn set_key(&mut self, key: &str, value: &str) -> Result<String, redis::RedisError> {
         redis::cmd("SET")
             .arg(&[key, value, "EX", "300"])
-            .query_async::<_, Vec<String>>(&mut self.con)
+            .query_async::<_, String>(&mut self.con)
             .await
     }
 
