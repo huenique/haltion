@@ -90,7 +90,7 @@ pub async fn authorize(
     secret_key: &String,
 ) -> Result<(), ServiceError> {
     // Generate OTP
-    let otp = topt::generate_token(secret_key.to_owned())
+    let otp = topt::generate_token(secret_key)
         .await
         .map_err(|e| handle_generic_error(e, "Failed to generate OTP"))?;
 

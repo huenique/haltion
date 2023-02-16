@@ -31,8 +31,10 @@ cp .env.example .env
 3. Fill in the `.env` file. To generate a secret key, you may run:
 
 ```sh
-openssl rand -base64 32
+openssl rand -hex 20 | xxd -r -p | base32 | tr -d '='
 ```
+
+> The server requires a base32 string for RFC-6238 compliance.
 
 4. Install Rust dependencies
 
