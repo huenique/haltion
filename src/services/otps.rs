@@ -98,7 +98,7 @@ pub async fn authorize(
     let mut map = HashMap::new();
     map.insert("recipient", phone_number);
     map.insert("content", &otp);
-    req.post(sms_host)
+    req.post(format!("{}/messages", sms_host))
         .json(&map)
         .send()
         .await
