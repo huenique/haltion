@@ -1,16 +1,15 @@
-use crate::config::env::REDIS_URL;
+use crate::config::env::{DATABASE_URL, REDIS_URL};
 use crate::routes;
 use crate::structs::AppState;
 use crate::utils::redis::RedisClient;
 use axum::Router;
-use dotenv_codegen::dotenv;
 use log::LevelFilter::Info;
 use sea_orm::{ConnectOptions, Database};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
 pub async fn create_app() -> Router {
-    let mut opt = ConnectOptions::new(dotenv!("DATABASE_URL").to_owned());
+    let mut opt = ConnectOptions::new(DATABASE_URL.to_owned());
 
     opt.min_connections(1)
         .max_connections(10)
