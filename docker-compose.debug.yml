@@ -6,13 +6,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    environment:
-      DATABASE_URL: postgres://username:password@postgres:5432/haltion
-      REDIS_URL: redis://redis:6379
-      SECRET_KEY: secret_key
-      SMS_HOST: https://your_sms_gateway/
     ports:
-      - "8000:8000"
+      - "3000:3000"
     depends_on:
       - postgres
       - redis
