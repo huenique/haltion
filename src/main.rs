@@ -19,7 +19,7 @@ async fn main() {
 
     let app = app::create_app().await;
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 10000));
 
     println!("listening on http://{}", addr);
 
