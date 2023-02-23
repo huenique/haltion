@@ -25,25 +25,26 @@ pub struct ServiceError {
 ///
 /// # Errors
 ///
-/// Returns a `ServiceError` if an error occurs while communicating with the Redis server.
+/// Returns a `ServiceError` if an error occurs while communicating with the Redis server or if the
+/// JWT signing operation fails.
 ///
 /// # Examples
 ///
 /// ```
 /// # use myapp::RedisClient;
-/// # use myapp::verify;
+/// # use myapp::verify_otp;
 /// #
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut redis = RedisClient::connect("redis://localhost").await?;
 ///
 /// let otp = "123456".to_string();
-/// let phone_number = verify(&mut redis, &otp).await?;
+/// let phone_number = verify_otp(&mut redis, &otp).await?;
 ///
 /// println!("Phone number: {}", phone_number);
 /// # Ok(())
 /// # }
 /// ```
-pub async fn verify(redis: &mut RedisClient, otp: &String) -> Result<String, ServiceError> {
+pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> Result<String, ServiceError> {
     let phone_number = match redis.get_key(otp).await {
         Ok(phone_number) => phone_number,
         Err(e) => {
@@ -60,7 +61,7 @@ pub async fn verify(redis: &mut RedisClient, otp: &String) -> Result<String, Ser
     Ok(token)
 }
 
-/// Generates an OTP and sends it to the user's phone number.
+/// Generates a one-time password (OTP) and sends it to the user's phone number via SMS.
 ///
 /// # Arguments
 ///
@@ -68,6 +69,7 @@ pub async fn verify(redis: &mut RedisClient, otp: &String) -> Result<String, Ser
 /// * `phone_number` - A reference to a `String` containing the user's phone number.
 /// * `sms_host` - A reference to a `String` containing the URL of the SMS API endpoint.
 /// * `req` - A `Client` for sending HTTP requests to the SMS API endpoint.
+/// * `secret_key` - A reference to a `String` containing the secret key for generating the OTP.
 ///
 /// # Errors
 ///
@@ -80,9 +82,10 @@ pub async fn verify(redis: &mut RedisClient, otp: &String) -> Result<String, Ser
 /// let phone_number = "+1234567890".to_owned();
 /// let sms_host = "https://example.com/sms".to_owned();
 /// let req = reqwest::Client::new();
-/// authorize(&mut redis, &phone_number, &sms_host, req).await?;
+/// let secret_key = "mysecretkey".to_owned();
+/// authorize_user(&mut redis, &phone_number, &sms_host, req, &secret_key).await?;
 /// ```
-pub async fn authorize(
+pub async fn authorize_user(
     redis: &mut RedisClient,
     phone_number: &String,
     sms_host: &String,
@@ -94,6 +97,12 @@ pub async fn authorize(
         .await
         .map_err(|e| handle_generic_error(e, "Failed to generate OTP"))?;
 
+    // Add token to redis
+    redis
+        .set_key(&otp, phone_number)
+        .await
+        .map_err(handle_redis_error)?;
+
     // Send SMS
     let mut map = HashMap::new();
     map.insert("recipient", phone_number);
@@ -103,12 +112,6 @@ pub async fn authorize(
         .send()
         .await
         .map_err(handle_reqwest_error)?;
-
-    // Add token to redis
-    redis
-        .set_key(&otp, phone_number)
-        .await
-        .map_err(handle_redis_error)?;
 
     Ok(())
 }

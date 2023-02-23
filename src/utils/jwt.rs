@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::config::env;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    sub: String,
+pub struct Claims {
+    iss: String,
     iat: i64,
     exp: i64,
+    aud: String,
+    sub: String,
 }
 
 impl Claims {
@@ -17,7 +19,9 @@ impl Claims {
         let exp = iat + Duration::hours(24);
 
         Self {
-            sub: phone_number,
+            iss: env::APP_NAME.to_string(),
+            aud: phone_number.clone(),
+            sub: phone_number.clone(),
             iat: iat.timestamp(),
             exp: exp.timestamp(),
         }
