@@ -15,14 +15,14 @@ use serde_json::json;
 
 pub fn create_route() -> Router<AppState> {
     Router::new()
-        .route("/otps/:otp", get(verify))
-        .route("/otps", post(authorize))
+        .route("/:otp", get(verify_otp))
+        .route("/", post(authorize_user))
 }
 
-async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
+async fn verify_otp(Path(otp): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
 
-    let token = match otps::verify(&mut redis, &otp).await {
+    let token = match otps::verify_otp(&mut redis, &otp).await {
         Ok(phone_number) => phone_number,
         Err(err) => {
             return (
@@ -51,10 +51,13 @@ async fn verify(Path(otp): Path<String>, State(state): State<AppState>) -> impl 
 
 // TODO: Rate limit this route
 #[axum_macros::debug_handler]
-async fn authorize(State(state): State<AppState>, payload: Json<OtpPayload>) -> impl IntoResponse {
+async fn authorize_user(
+    State(state): State<AppState>,
+    payload: Json<OtpPayload>,
+) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
 
-    match otps::authorize(
+    match otps::authorize_user(
         &mut redis,
         &payload.phone_number,
         &SMS_HOST,

@@ -28,6 +28,7 @@ pub async fn create_app() -> Router {
     let state = AppState { db, redis };
 
     Router::new()
-        .nest("/", routes::otps::create_route())
+        .nest("/otps", routes::otps::create_route())
+        .nest("/jwts", routes::jwts::create_route())
         .with_state(state)
 }
