@@ -11,6 +11,7 @@ pub struct Claims {
     exp: i64,
     aud: String,
     sub: String,
+    scope: String,
 }
 
 impl Claims {
@@ -24,6 +25,7 @@ impl Claims {
             sub: phone_number.clone(),
             iat: iat.timestamp(),
             exp: exp.timestamp(),
+            scope: "user".to_string(),
         }
     }
 }

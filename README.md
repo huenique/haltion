@@ -8,6 +8,8 @@ A fast, simple authorization and authentication server.
 
 - [x] [Details](./docs/README.md). One-Time PIN (OTP) based on TOTP (Time-based One-Time Password), which is described in [IETF RFC 6238](https://www.rfc-editor.org/rfc/rfc6238).
 - [x] [Details](./docs/README.md). Client authentication using JWT (JSON Web Token).
+- [ ] Access groups
+- [ ] User data storage
 - [ ] Two-Factor Authentication (2FA) using OTP.
 - [ ] Rate limit/throttling.
 
