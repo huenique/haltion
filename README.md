@@ -1,6 +1,8 @@
 # Haltion
 
-A fast, simple authorization and authentication server.
+A self-hosted identity platform that provides authentication and authorization services for web, mobile, and API-based applications.
+
+It aims to help developers implement authentication and authorization features in their applications without having to build these functionalities from scratch.
 
 > This project uses the [axum-pg-redis](https://github.com/hjuhalc/axum-pg-redis) template.
 
