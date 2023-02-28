@@ -14,10 +14,10 @@ async fn signup(State(state): State<AppState>, payload: Json<Tenant>) -> impl In
     let result = tenants::signup(&state.db, &payload.name).await;
 
     (
-        result.0,
+        result.status,
         [("content-type", "application/json")],
         json!({
-            "detail": result.1
+            "detail": result.detail,
         })
         .to_string(),
     )
