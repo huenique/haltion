@@ -8,7 +8,7 @@ pub async fn signup(db: &DatabaseConnection, payload: &String) -> (StatusCode, S
     );
 
     match db.execute(stmt).await {
-        Ok(info) => (StatusCode::OK, info.last_insert_id().to_string()),
+        Ok(_) => (StatusCode::OK, "Created".to_string()),
         Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
     }
 }
