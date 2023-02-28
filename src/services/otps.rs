@@ -6,7 +6,7 @@ use reqwest::Client;
 use std::collections::HashMap;
 
 #[derive(Debug)]
-pub struct ServiceError {
+pub struct OtpResult {
     pub detail: String,
     pub status: StatusCode,
 }
@@ -21,11 +21,11 @@ pub struct ServiceError {
 /// # Returns
 ///
 /// Returns the phone number associated with the given OTP, if it is valid. If the OTP is invalid
-/// or has expired, returns a `ServiceError`.
+/// or has expired, returns a `OtpResult`.
 ///
 /// # Errors
 ///
-/// Returns a `ServiceError` if an error occurs while communicating with the Redis server or if the
+/// Returns a `OtpResult` if an error occurs while communicating with the Redis server or if the
 /// JWT signing operation fails.
 ///
 /// # Examples
@@ -44,23 +44,21 @@ pub struct ServiceError {
 /// # Ok(())
 /// # }
 /// ```
-pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> Result<String, ServiceError> {
+pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> OtpResult {
     let phone_number = match redis.get_key(otp).await {
         Ok(phone_number) => phone_number,
-        Err(e) => {
-            let err = handle_redis_error(e);
-
-            return Err(err);
-        }
+        Err(e) => return handle_redis_error(e),
     };
-
     let token = jwt::sign(phone_number).await.unwrap();
 
+    // Delete OTP to prevent reuse
     redis.del_key(&otp).await.unwrap();
 
-    Ok(token)
+    OtpResult {
+        detail: token,
+        status: StatusCode::OK,
+    }
 }
-
 /// Generates a one-time password (OTP) and sends it to the user's phone number via SMS.
 ///
 /// # Arguments
@@ -73,7 +71,7 @@ pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> Result<String,
 ///
 /// # Errors
 ///
-/// Returns a `ServiceError` if there is an error generating the JWT, sending the SMS, or adding the token to Redis.
+/// Returns a `OtpResult` if there is an error generating the JWT, sending the SMS, or adding the token to Redis.
 ///
 /// # Example
 ///
@@ -91,32 +89,40 @@ pub async fn authorize_user(
     sms_host: &String,
     req: Client,
     secret_key: &String,
-) -> Result<(), ServiceError> {
+) -> OtpResult {
     // Generate OTP
-    let otp = topt::generate_token(secret_key)
-        .await
-        .map_err(|e| handle_generic_error(e, "Failed to generate OTP"))?;
+    let otp = match topt::generate_token(secret_key).await {
+        Ok(otp) => otp,
+        Err(e) => return handle_generic_error(e, "Failed to generate OTP"),
+    };
 
     // Add token to redis
-    redis
-        .set_key(&otp, phone_number)
-        .await
-        .map_err(handle_redis_error)?;
+    match redis.set_key(&otp, phone_number).await {
+        Ok(_) => (),
+        Err(e) => return handle_redis_error(e),
+    };
 
     // Send SMS
     let mut map = HashMap::new();
     map.insert("recipient", phone_number);
     map.insert("content", &otp);
-    req.post(format!("{}/messages", sms_host))
+    match req
+        .post(format!("{}/messages", sms_host))
         .json(&map)
         .send()
         .await
-        .map_err(handle_reqwest_error)?;
+    {
+        Ok(_) => (),
+        Err(e) => return handle_reqwest_error(e),
+    };
 
-    Ok(())
+    OtpResult {
+        detail: "OTP sent".to_owned(),
+        status: StatusCode::OK,
+    }
 }
 
-/// Convert a RedisError into a ServiceError.
+/// Convert a RedisError into a OtpResult.
 ///
 /// # Arguments
 ///
@@ -124,7 +130,7 @@ pub async fn authorize_user(
 ///
 /// # Returns
 ///
-/// Returns a ServiceError that corresponds to the given RedisError.
+/// Returns a OtpResult that corresponds to the given RedisError.
 ///
 /// # Examples
 ///
@@ -140,7 +146,7 @@ pub async fn authorize_user(
 ///     assert_eq!(service_err.detail, "ERR unknown command");
 /// }
 /// ```
-fn handle_redis_error(e: RedisError) -> ServiceError {
+fn handle_redis_error(e: RedisError) -> OtpResult {
     let detail = e.detail().unwrap_or("Unknown error").to_owned();
     let status = if detail.contains("Response type not string compatible")
         || detail.contains("response was nil")
@@ -170,10 +176,10 @@ fn handle_redis_error(e: RedisError) -> ServiceError {
         }
     };
 
-    ServiceError { detail, status }
+    OtpResult { detail, status }
 }
 
-/// Returns a `ServiceError` with a bad gateway status and a detail message
+/// Returns a `OtpResult` with a bad gateway status and a detail message
 /// containing information about the Reqwest error that occurred.
 ///
 /// # Arguments
@@ -182,7 +188,7 @@ fn handle_redis_error(e: RedisError) -> ServiceError {
 ///
 /// # Returns
 ///
-/// A `ServiceError` with a bad gateway status and a detail message
+/// A `OtpResult` with a bad gateway status and a detail message
 /// containing information about the Reqwest error that occurred.
 ///
 /// # Example
@@ -193,14 +199,14 @@ fn handle_redis_error(e: RedisError) -> ServiceError {
 /// assert_eq!(service_error.status, StatusCode::BAD_GATEWAY);
 /// assert_eq!(service_error.detail, "Reqwest error: error sending request for `http://example.com`: Custom error");
 /// ```
-fn handle_reqwest_error(e: reqwest::Error) -> ServiceError {
-    ServiceError {
+fn handle_reqwest_error(e: reqwest::Error) -> OtpResult {
+    OtpResult {
         detail: format!("Reqwest error: {}", e.to_string()),
         status: StatusCode::BAD_GATEWAY,
     }
 }
 
-/// Maps an error of a boxed trait object that implements the `std::error::Error` trait to a `ServiceError` type.
+/// Maps an error of a boxed trait object that implements the `std::error::Error` trait to a `OtpResult` type.
 ///
 /// # Arguments
 ///
@@ -208,9 +214,9 @@ fn handle_reqwest_error(e: reqwest::Error) -> ServiceError {
 ///
 /// # Returns
 ///
-/// A `ServiceError` struct that contains the error message and status code.
-fn handle_generic_error(e: Box<dyn std::error::Error>, title: &'static str) -> ServiceError {
-    ServiceError {
+/// A `OtpResult` struct that contains the error message and status code.
+fn handle_generic_error(e: Box<dyn std::error::Error>, title: &'static str) -> OtpResult {
+    OtpResult {
         detail: format!("{}: {}", title, e),
         status: StatusCode::INTERNAL_SERVER_ERROR,
     }

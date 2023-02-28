@@ -21,31 +21,23 @@ pub fn create_route() -> Router<AppState> {
 
 async fn verify_otp(Path(otp): Path<String>, State(state): State<AppState>) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
-
-    let token = match otps::verify_otp(&mut redis, &otp).await {
-        Ok(phone_number) => phone_number,
-        Err(err) => {
-            return (
-                err.status,
-                [("content-type", "application/json")],
-                json!({
-                    "verified": false,
-                    "detail": err.detail
-                })
-                .to_string(),
-            )
-        }
+    let result = otps::verify_otp(&mut redis, &otp).await;
+    let response = match result.status {
+        StatusCode::OK => json!({
+            "verified": true,
+            "access_token": result.detail,
+            "token_type": BEARER.to_string(),
+        }),
+        _ => json!({
+            "verified": false,
+            "detail": result.detail,
+        }),
     };
 
     (
-        StatusCode::OK,
+        result.status,
         [("content-type", "application/json")],
-        json!({
-            "verified": true,
-            "access_token": token,
-            "token_type": BEARER.to_string()
-        })
-        .to_string(),
+        response.to_string(),
     )
 }
 
@@ -56,37 +48,23 @@ async fn authorize_user(
     payload: Json<OtpPayload>,
 ) -> impl IntoResponse {
     let mut redis = state.redis.lock().await;
-
-    match otps::authorize_user(
+    let result = otps::authorize_user(
         &mut redis,
         &payload.phone_number,
         &SMS_HOST,
         Client::new(),
         &SECRET_KEY,
     )
-    .await
-    {
-        Ok(_) => (),
-        Err(err) => {
-            return (
-                err.status,
-                [("content-type", "application/json")],
-                json!({
-                    "sms_sent": false,
-                    "detail": err.detail
-                })
-                .to_string(),
-            )
-        }
+    .await;
+    let resp = match result.status {
+        StatusCode::OK => json!({ "sms_sent": true }),
+        _ => json!({ "sms_sent": false }),
     };
 
     (
         StatusCode::OK,
         [("content-type", "application/json")],
-        json!({
-            "sms_sent": true
-        })
-        .to_string(),
+        resp.to_string(),
     )
 }
 
@@ -99,9 +77,4 @@ pub struct OtpPayload {
 pub struct TokenPayload {
     pub access_token: String,
     pub token_type: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct AuthResult {
-    pub sms_sent: bool,
 }
