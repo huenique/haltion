@@ -7,19 +7,19 @@ pub struct TenantResult {
     pub status: StatusCode,
 }
 
-// TODO: Make this more robust. We should delete the tenant's schema if any of the steps fail.
-pub async fn signup(db: &DatabaseConnection, payload: &String) -> TenantResult {
+// TODO: Make this more robust.
+// We should delete the created schema if any of the subsequent steps fail.
+pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResult {
     let create_schema_stmt = Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
-        format!("CREATE SCHEMA {}", payload),
+        format!("CREATE SCHEMA {}", tenant_name),
     );
-
     match db.execute(create_schema_stmt).await {
         Ok(_) => (),
         Err(err) => return map_db_err_to_http_status(&err),
     };
 
-    let copy_tbls_stmt = format!("
+    let copy_tbls_stmt = Statement::from_string(sea_orm::DatabaseBackend::Postgres, format!("
     DO $$
     DECLARE
         tbl_name TEXT;
@@ -36,18 +36,15 @@ pub async fn signup(db: &DatabaseConnection, payload: &String) -> TenantResult {
         LOOP
             EXECUTE 'CREATE SEQUENCE {schema}.' || quote_ident(seq_name) || '';
         END LOOP;
-    END $$;", schema = payload
-    );
-
-    let copy_tbls_stmt = Statement::from_string(sea_orm::DatabaseBackend::Postgres, copy_tbls_stmt);
-
+    END $$;", schema = tenant_name
+    ));
     match db.execute(copy_tbls_stmt).await {
         Ok(_) => (),
         Err(err) => return map_db_err_to_http_status(&err),
     };
 
     TenantResult {
-        detail: format!("Created schema: {}", payload),
+        detail: format!("Created schema: {}", tenant_name),
         status: StatusCode::CREATED,
     }
 }
