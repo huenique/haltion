@@ -51,6 +51,7 @@ async fn authorize_user(
     let result = otps::authorize_user(
         &mut redis,
         &payload.phone_number,
+        &payload.domain,
         &SMS_HOST,
         Client::new(),
         &SECRET_KEY,
@@ -71,6 +72,7 @@ async fn authorize_user(
 #[derive(Clone, Debug, Deserialize)]
 pub struct OtpPayload {
     pub phone_number: String,
+    pub domain: String,
 }
 
 #[derive(Debug, Serialize)]

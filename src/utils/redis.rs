@@ -21,6 +21,19 @@ impl RedisClient {
             .await
     }
 
+    pub async fn set_key_map(
+        &mut self,
+        key: &str,
+        items: &[(String, String)],
+    ) -> Result<String, redis::RedisError> {
+        redis::cmd("HMSET")
+            .arg(key)
+            .arg(items)
+            .arg(&["EX", "300"])
+            .query_async::<_, String>(&mut self.con)
+            .await
+    }
+
     pub async fn get_key(&mut self, key: &str) -> Result<String, redis::RedisError> {
         self.con.get(key).await
     }
