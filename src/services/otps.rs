@@ -44,7 +44,7 @@ pub struct OtpResult {
 /// # Ok(())
 /// # }
 /// ```
-pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> OtpResult {
+pub async fn verify_otp(redis: &mut RedisClient, otp: &str) -> OtpResult {
     let phone_number = match redis.get_key(otp).await {
         Ok(phone_number) => phone_number,
         Err(e) => return handle_redis_error(e),
@@ -52,7 +52,7 @@ pub async fn verify_otp(redis: &mut RedisClient, otp: &String) -> OtpResult {
     let token = jwt::sign(phone_number).await.unwrap();
 
     // Delete OTP to prevent reuse
-    redis.del_key(&otp).await.unwrap();
+    redis.del_key(otp).await.unwrap();
 
     OtpResult {
         detail: token,
@@ -107,7 +107,7 @@ pub async fn authorize_user(
     map.insert("recipient", phone_number);
     map.insert("content", &otp);
     match req
-        .post(format!("{}/messages", sms_host))
+        .post(format!("{sms_host}/messages"))
         .json(&map)
         .send()
         .await
@@ -201,7 +201,7 @@ fn handle_redis_error(e: RedisError) -> OtpResult {
 /// ```
 fn handle_reqwest_error(e: reqwest::Error) -> OtpResult {
     OtpResult {
-        detail: format!("Reqwest error: {}", e.to_string()),
+        detail: format!("Reqwest error: {e}"),
         status: StatusCode::BAD_GATEWAY,
     }
 }
@@ -217,7 +217,7 @@ fn handle_reqwest_error(e: reqwest::Error) -> OtpResult {
 /// A `OtpResult` struct that contains the error message and status code.
 fn handle_generic_error(e: Box<dyn std::error::Error>, title: &'static str) -> OtpResult {
     OtpResult {
-        detail: format!("{}: {}", title, e),
+        detail: format!("{title}: {e}"),
         status: StatusCode::INTERNAL_SERVER_ERROR,
     }
 }

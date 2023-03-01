@@ -12,16 +12,14 @@ use std::net::SocketAddr;
 #[tokio::main]
 async fn main() {
     // Load environment variables from .env file if it exists
-    if let Err(_) = dotenvy::dotenv() {
+    if dotenvy::dotenv().is_err() {
         // If .env file does not exist, load environment variables from system environment
-        let _ = env::vars();
+        _ = env::vars();
     }
-
     let app = app::create_app().await;
-
     let addr = SocketAddr::from(([127, 0, 0, 1], 10000));
 
-    println!("listening on http://{}", addr);
+    println!("listening on http://{addr}");
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

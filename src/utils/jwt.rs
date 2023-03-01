@@ -22,7 +22,7 @@ impl Claims {
         Self {
             iss: env::APP_NAME.to_string(),
             aud: phone_number.clone(),
-            sub: phone_number.clone(),
+            sub: phone_number,
             iat: iat.timestamp(),
             exp: exp.timestamp(),
             scope: "user".to_string(),
@@ -31,18 +31,18 @@ impl Claims {
 }
 
 pub async fn sign(phone_number: String) -> Result<String, jsonwebtoken::errors::Error> {
-    Ok(jsonwebtoken::encode(
+    jsonwebtoken::encode(
         &Header::default(),
         &Claims::new(phone_number).await,
         &EncodingKey::from_secret(env::SECRET_KEY.as_bytes()),
-    )?)
+    )
 }
 
 pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> {
-    Ok(jsonwebtoken::decode(
+    jsonwebtoken::decode(
         token,
         &DecodingKey::from_secret(env::SECRET_KEY.as_bytes()),
         &Validation::default(),
     )
-    .map(|data| data.claims)?)
+    .map(|data| data.claims)
 }

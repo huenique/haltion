@@ -12,7 +12,7 @@ pub struct TenantResult {
 pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResult {
     let create_schema_stmt = Statement::from_string(
         sea_orm::DatabaseBackend::Postgres,
-        format!("CREATE SCHEMA {}", tenant_name),
+        format!("CREATE SCHEMA {tenant_name}"),
     );
     match db.execute(create_schema_stmt).await {
         Ok(_) => (),
@@ -28,15 +28,15 @@ pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResu
         FOR tbl_name IN
             SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         LOOP
-            EXECUTE 'CREATE TABLE {schema}.' || quote_ident(tbl_name) || ' (LIKE public.' || quote_ident(tbl_name) || ' INCLUDING ALL)';
+            EXECUTE 'CREATE TABLE {tenant_name}.' || quote_ident(tbl_name) || ' (LIKE public.' || quote_ident(tbl_name) || ' INCLUDING ALL)';
         END LOOP;
 
         FOR seq_name IN  -- Use the new variable in the loop for sequences
             SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public'
         LOOP
-            EXECUTE 'CREATE SEQUENCE {schema}.' || quote_ident(seq_name) || '';
+            EXECUTE 'CREATE SEQUENCE {tenant_name}.' || quote_ident(seq_name) || '';
         END LOOP;
-    END $$;", schema = tenant_name
+    END $$;"
     ));
     match db.execute(copy_tbls_stmt).await {
         Ok(_) => (),
@@ -44,7 +44,7 @@ pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResu
     };
 
     TenantResult {
-        detail: format!("Created schema: {}", tenant_name),
+        detail: format!("Created schema: {tenant_name}"),
         status: StatusCode::CREATED,
     }
 }
@@ -69,7 +69,7 @@ fn map_db_err_to_http_status(err: &DbErr) -> TenantResult {
     let message = err.to_string();
     if message.contains("already exists") {
         return TenantResult {
-            detail: format!("Tenant already exists"),
+            detail: "Tenant already exists".to_string(),
             status: StatusCode::CONFLICT,
         };
     }

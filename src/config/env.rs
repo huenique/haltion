@@ -14,7 +14,7 @@ fn env_or_default(key: &str) -> String {
         Ok(val) => val,
         Err(_) => match env::var(key) {
             Ok(val) => val,
-            Err(_) => panic!("{} environment variable not found", key),
+            Err(_) => panic!("{key} environment variable not found"),
         },
     }
 }
