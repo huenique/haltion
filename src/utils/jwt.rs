@@ -46,3 +46,10 @@ pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> 
     )
     .map(|data| data.claims)
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TenantClaims {
+    iss: String,
+    iat: i64,
+    pub tenantid: String,
+}
