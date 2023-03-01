@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use sea_orm::{query::Statement, ConnectionTrait, DatabaseConnection, DbErr};
+use sea_orm::{query::Statement, ConnectionTrait, DatabaseBackend, DatabaseConnection, DbErr};
 
 #[derive(Debug)]
 pub struct TenantResult {
@@ -11,7 +11,7 @@ pub struct TenantResult {
 // We should delete the created schema if any of the subsequent steps fail.
 pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResult {
     let create_schema_stmt = Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
+        DatabaseBackend::Postgres,
         format!("CREATE SCHEMA {tenant_name}"),
     );
     match db.execute(create_schema_stmt).await {
@@ -19,7 +19,7 @@ pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResu
         Err(err) => return map_db_err_to_http_status(&err),
     };
 
-    let copy_tbls_stmt = Statement::from_string(sea_orm::DatabaseBackend::Postgres, format!("
+    let copy_tbls_stmt = Statement::from_string(DatabaseBackend::Postgres, format!("
     DO $$
     DECLARE
         tbl_name TEXT;
@@ -39,13 +39,11 @@ pub async fn signup(db: &DatabaseConnection, tenant_name: &String) -> TenantResu
     END $$;"
     ));
     match db.execute(copy_tbls_stmt).await {
-        Ok(_) => (),
+        Ok(_) => TenantResult {
+            detail: format!("Created schema: {tenant_name}"),
+            status: StatusCode::CREATED,
+        },
         Err(err) => return map_db_err_to_http_status(&err),
-    };
-
-    TenantResult {
-        detail: format!("Created schema: {tenant_name}"),
-        status: StatusCode::CREATED,
     }
 }
 
