@@ -1,6 +1,58 @@
 version: '3.4'
 
 services:
+  redis:
+    image: redis:latest
+  
+  pd0:
+    image: pingcap/pd:v6.1.5
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+    command:
+      - --name=pd0
+      - --data-dir=/data/pd0
+      - --client-urls=http://0.0.0.0:2379
+      - --advertise-client-urls=http://pd0:2379
+      - --peer-urls=http://0.0.0.0:2380
+      - --advertise-peer-urls=http://pd0:2380
+      - --log-file=/logs/pd0.log
+    restart: on-failure
+  
+  tikv0:
+    image: pingcap/tikv:v6.1.5
+    ports:
+      - "20160:20160"
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+    command:
+      - --addr=0.0.0.0:20160
+      - --advertise-addr=tikv0:20160
+      - --data-dir=/data/tikv0
+      - --pd=pd0:2379
+      - --log-file=/logs/tikv0.log
+    depends_on:
+      - "pd0"
+    restart: on-failure
+  
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    ports:
+      - "10000:10000"
+    command: 
+      - start
+      - --log=debug
+      - --user=root
+      - --pass=root
+      - tikv://pd0:2379
+    depends_on:
+      - tikv0
+    restart: on-failure
+  
   haltion:
     image: haltion
     build:
@@ -9,15 +61,6 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgres
+      - tikv0
       - redis
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: username
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: haltion
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-  redis:
-    image: redis:latest
+    restart: on-failure

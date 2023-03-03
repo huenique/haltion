@@ -12,7 +12,6 @@ pub async fn create_app() -> Router {
         RedisClient::new(REDIS_URL.to_owned()).await.unwrap(),
     ));
     let http_client = Client::new();
-
     let state = AppState { redis, http_client };
 
     Router::new()
