@@ -9,6 +9,10 @@ pub struct SessionResult {
     pub status: StatusCode,
 }
 
+pub async fn signup_() {
+    
+}
+
 pub async fn signup(
     db: &DatabaseConnection,
     tenantid: &String,
