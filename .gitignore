@@ -24,3 +24,7 @@ Cargo.lock
 
 ### SurrealDB ###
 *.db
+
+### PD & Tikv ###
+logs/
+data/
