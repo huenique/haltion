@@ -1,17 +1,24 @@
+use crate::config::env;
 use crate::services::tenants;
 use crate::structs::AppState;
 use axum::{extract::State, response::IntoResponse, routing::post, Json, Router};
-use serde::Deserialize;
 use serde_json::json;
 
 pub fn create_route() -> Router<AppState> {
-    Router::new().route("/signup", post(signup))
+    Router::new().route("/signup", post(create_tenant))
 }
 
-// The payload should contain the name of the tenant, which we will use to
-// create the tenant's schema.
-async fn signup(State(state): State<AppState>, payload: Json<Tenant>) -> impl IntoResponse {
-    let result = tenants::signup(&state.db, &payload.name).await;
+async fn create_tenant(
+    State(state): State<AppState>,
+    payload: Json<tenants::Tenant>,
+) -> impl IntoResponse {
+    let result = tenants::create_tenant(
+        &state.http_client,
+        &env::DB_URL.to_string(),
+        &env::DB_AUTH.to_string(),
+        &payload.name,
+    )
+    .await;
 
     (
         result.status,
@@ -21,9 +28,4 @@ async fn signup(State(state): State<AppState>, payload: Json<Tenant>) -> impl In
         })
         .to_string(),
     )
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Tenant {
-    pub name: String,
 }

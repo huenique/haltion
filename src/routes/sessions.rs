@@ -1,7 +1,6 @@
-use crate::services::sessions;
 use crate::structs::AppState;
+use crate::{config::env, services::sessions};
 use axum::{extract::State, http::HeaderMap, response::IntoResponse, routing::post, Json, Router};
-use serde::Deserialize;
 use serde_json::json;
 
 pub fn create_route() -> Router<AppState> {
@@ -11,10 +10,20 @@ pub fn create_route() -> Router<AppState> {
 async fn signup(
     headers: HeaderMap,
     State(state): State<AppState>,
-    payload: Json<Credential>,
+    payload: Json<sessions::User>,
 ) -> impl IntoResponse {
-    let v_result = sessions::verify_jwt(&headers, "secret", &state.db).await;
-    let s_result = sessions::signup(&state.db, &v_result.1, &payload.username).await;
+    let v_result = sessions::verify_jwt(&headers, "secret").await;
+    let s_result = sessions::create_user(
+        &state.http_client,
+        &env::DB_AUTH.to_string(),
+        &env::DB_URL,
+        &sessions::User {
+            username: payload.username.clone(),
+            password: payload.password.clone(),
+        },
+        &v_result.1,
+    )
+    .await;
 
     (
         s_result.status,
@@ -24,10 +33,4 @@ async fn signup(
         })
         .to_string(),
     )
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct Credential {
-    pub username: String,
-    pub password: String,
 }

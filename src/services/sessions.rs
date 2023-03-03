@@ -1,7 +1,8 @@
 use crate::utils::jwt::TenantClaims;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
-use sea_orm::{ConnectionTrait, DatabaseConnection, DbErr, Statement};
+use reqwest::Client;
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct SessionResult {
@@ -9,74 +10,63 @@ pub struct SessionResult {
     pub status: StatusCode,
 }
 
-pub async fn signup_() {
-    
+#[derive(Debug)]
+pub struct DatabaseConfig {
+    pub url: String,
+    pub username: String,
+    pub password: String,
 }
 
-pub async fn signup(
-    db: &DatabaseConnection,
-    tenantid: &String,
-    username: &String,
+#[derive(Clone, Debug, Deserialize)]
+pub struct User {
+    pub username: String,
+    pub password: String,
+}
+
+pub async fn create_user(
+    client: &Client,
+    auth: &String,
+    db_url: &String,
+    user: &User,
+    tenant: &String,
 ) -> SessionResult {
-    let select_user_stmt = Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
-        format!("SELECT * FROM {tenantid}.users WHERE username = {username})"),
-    );
-
-    match db.execute(select_user_stmt).await {
-        Ok(_) => SessionResult {
-            detail: "User created".to_string(),
-            status: StatusCode::CREATED,
-        },
-        Err(err) => map_db_err_to_http_status(&err),
-    }
-}
-
-fn map_db_err_to_http_status(err: &DbErr) -> SessionResult {
-    let status = match err {
-        DbErr::ConnectionAcquire => StatusCode::SERVICE_UNAVAILABLE,
-        DbErr::TryIntoErr { .. } => StatusCode::BAD_REQUEST,
-        DbErr::Conn(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        DbErr::Exec(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        DbErr::Query(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        DbErr::ConvertFromU64(_) => StatusCode::BAD_REQUEST,
-        DbErr::UnpackInsertId => StatusCode::INTERNAL_SERVER_ERROR,
-        DbErr::UpdateGetPrimaryKey => StatusCode::BAD_REQUEST,
-        DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
-        DbErr::AttrNotSet(_) => StatusCode::BAD_REQUEST,
-        DbErr::Custom(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        DbErr::Type(_) => StatusCode::BAD_REQUEST,
-        DbErr::Json(_) => StatusCode::BAD_REQUEST,
-        DbErr::Migration(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    let resp = match client
+        .post(db_url)
+        .header("Accept", "application/json")
+        .header("Authorization", auth)
+        .header("DB", tenant)
+        .header("NS", tenant)
+        .body(format!(
+            "CREATE user CONTENT {{\"name\": \"{}\", \"password\": \"{}\"}}",
+            user.username, user.password
+        ))
+        .send()
+        .await
+    {
+        Ok(resp) => resp,
+        Err(err) => {
+            return SessionResult {
+                detail: err.to_string(),
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+            };
+        }
     };
-    let message = err.to_string();
-    if message.contains("already exists") {
-        return SessionResult {
-            detail: "Tenant already exists".to_string(),
-            status: StatusCode::CONFLICT,
-        };
-    }
 
     SessionResult {
-        detail: message,
-        status,
+        status: resp.status(),
+        detail: match resp.json::<String>().await {
+            Ok(json) => json.to_string(),
+            Err(err) => err.to_string(),
+        },
     }
 }
 
-pub async fn verify_jwt(
-    headers: &HeaderMap,
-    secret: &'static str,
-    db: &DatabaseConnection,
-) -> (StatusCode, String) {
+pub async fn verify_jwt(headers: &HeaderMap, secret: &'static str) -> (StatusCode, String) {
     let auth = headers.get("Authorization");
     let result = match auth {
         Some(auth_header) => {
             let v_result = verify_auth_header(auth_header, secret);
             if v_result.0 != StatusCode::OK {
-                return v_result;
-            }
-
-            if verify_tenant(&v_result.1, db).await {
                 return v_result;
             }
 
@@ -91,24 +81,6 @@ pub async fn verify_jwt(
     };
 
     result
-}
-
-async fn verify_tenant(tenantid: &String, db: &DatabaseConnection) -> bool {
-    let stmt = Statement::from_string(
-        sea_orm::DatabaseBackend::Postgres,
-        format!(
-            "SELECT EXISTS (SELECT * FROM pg_catalog.pg_namespace WHERE nspname = '{}');",
-            tenantid
-        ),
-    );
-
-    let q_result = db.execute(stmt).await.unwrap();
-
-    if q_result.rows_affected() == 0 {
-        return false;
-    }
-
-    true
 }
 
 fn verify_auth_header(auth_header: &HeaderValue, secret: &'static str) -> (StatusCode, String) {

@@ -9,6 +9,7 @@ default-run = "haltion"
 [dependencies]
 axum = "0.6.4"
 axum-macros = "0.3.2"
+base64 = "0.21.0"
 chrono = "0.4.23"
 dotenvy = "0.15.6"
 dotenvy_macro = "0.15.1"
