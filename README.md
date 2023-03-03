@@ -4,15 +4,13 @@ A self-hosted identity platform that provides authentication and authorization s
 
 It aims to help developers implement authentication and authorization features in their applications without having to build these functionalities from scratch.
 
-> This project uses the [axum-pg-redis](https://github.com/hjuhalc/axum-pg-redis) template.
-
 ## Features
 
 - [x] [Details](./docs/README.md). One-Time PIN (OTP) based on TOTP (Time-based One-Time Password), which is described in [IETF RFC 6238](https://www.rfc-editor.org/rfc/rfc6238).
 - [x] [Details](./docs/README.md). Client authentication using JWT (JSON Web Token).
-- [ ] Access groups
-- [ ] User data storage
-- [ ] Two-Factor Authentication (2FA) using OTP.
+- [ ] Multitenancy
+- [ ] Access groups & scoped permissions
+- [ ] Two-Factor Authentication (2FA) using OTP via SMS or email.
 - [ ] Rate limit/throttling.
 
 ## Getting Started
@@ -20,7 +18,7 @@ It aims to help developers implement authentication and authorization features i
 ### Prerequisites
 
 - [Rust](https://www.rust-lang.org/tools/install)
-- [PostgreSQL](https://www.postgresql.org/download/)
+- [SurrealDB](https://surrealdb.com)
 - [Redis](https://redis.io/download)
 
 ### Installation & Setup

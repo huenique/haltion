@@ -1,4 +1,4 @@
-use crate::utils::jwt::Claims;
+use crate::utils::jwt::UserClaims;
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 
@@ -27,7 +27,7 @@ fn verify_auth_header(
 
     let token = auth_header_str.trim_start_matches("Bearer ");
 
-    match decode::<Claims>(
+    match decode::<UserClaims>(
         token,
         &DecodingKey::from_secret(secret.as_ref()),
         &Validation::new(Algorithm::HS256),

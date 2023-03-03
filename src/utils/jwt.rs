@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::env;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
+pub struct UserClaims {
     iss: String,
     iat: i64,
     exp: i64,
@@ -14,15 +14,15 @@ pub struct Claims {
     scope: String,
 }
 
-impl Claims {
-    pub async fn new(phone_number: String) -> Self {
+impl UserClaims {
+    pub async fn new(sub: String, aud: String) -> Self {
         let iat = Utc::now();
         let exp = iat + Duration::hours(24);
 
         Self {
             iss: env::APP_NAME.to_string(),
-            aud: phone_number.clone(),
-            sub: phone_number,
+            aud,
+            sub,
             iat: iat.timestamp(),
             exp: exp.timestamp(),
             scope: "user".to_string(),
@@ -30,10 +30,10 @@ impl Claims {
     }
 }
 
-pub async fn sign(phone_number: String) -> Result<String, jsonwebtoken::errors::Error> {
+pub async fn sign(sub: String, aud: String) -> Result<String, jsonwebtoken::errors::Error> {
     jsonwebtoken::encode(
         &Header::default(),
-        &Claims::new(phone_number).await,
+        &UserClaims::new(sub, aud).await,
         &EncodingKey::from_secret(env::SECRET_KEY.as_bytes()),
     )
 }
@@ -45,4 +45,11 @@ pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> 
         &Validation::default(),
     )
     .map(|data| data.claims)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TenantClaims {
+    iss: String,
+    iat: i64,
+    pub tenantid: String,
 }

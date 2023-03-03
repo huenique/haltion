@@ -45,11 +45,16 @@ pub struct OtpResult {
 /// # }
 /// ```
 pub async fn verify_otp(redis: &mut RedisClient, otp: &str) -> OtpResult {
+    let domain = match redis.get_key(otp).await {
+        Ok(domain) => domain,
+        Err(e) => return handle_redis_error(e),
+    };
+
     let phone_number = match redis.get_key(otp).await {
         Ok(phone_number) => phone_number,
         Err(e) => return handle_redis_error(e),
     };
-    let token = jwt::sign(phone_number).await.unwrap();
+    let token = jwt::sign(phone_number, domain).await.unwrap();
 
     // Delete OTP to prevent reuse
     redis.del_key(otp).await.unwrap();
@@ -86,6 +91,7 @@ pub async fn verify_otp(redis: &mut RedisClient, otp: &str) -> OtpResult {
 pub async fn authorize_user(
     redis: &mut RedisClient,
     phone_number: &String,
+    domain: &String,
     sms_host: &String,
     req: Client,
     secret_key: &String,
@@ -97,7 +103,10 @@ pub async fn authorize_user(
     };
 
     // Add token to redis
-    match redis.set_key(&otp, phone_number).await {
+    match redis
+        .set_key_map(&otp, &[(phone_number.to_owned(), domain.to_owned())])
+        .await
+    {
         Ok(_) => (),
         Err(e) => return handle_redis_error(e),
     };
