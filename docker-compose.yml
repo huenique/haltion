@@ -51,7 +51,7 @@ services:
       - tikv://pd0:2379
     depends_on:
       - tikv0
-    restart: on-failure
+    restart: always
   
   haltion:
     image: haltion
@@ -63,4 +63,4 @@ services:
     depends_on:
       - tikv0
       - redis
-    restart: on-failure
+    restart: always
