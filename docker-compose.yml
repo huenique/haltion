@@ -37,12 +37,12 @@ services:
       - --log-file=/logs/tikv0.log
     depends_on:
       - "pd0"
-    restart: on-failure
+    restart: always
   
   surrealdb:
     image: surrealdb/surrealdb:latest
     ports:
-      - "10000:10000"
+      - "8000:8000"
     command: 
       - start
       - --log=debug
