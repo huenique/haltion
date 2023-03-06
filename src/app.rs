@@ -18,5 +18,6 @@ pub async fn create_app() -> Router {
         .nest("/otps", routes::otps::create_route())
         .nest("/jwts", routes::jwts::create_route())
         .nest("/tenants", routes::tenants::create_route())
+        .nest("/users", routes::users::create_route())
         .with_state(state)
 }

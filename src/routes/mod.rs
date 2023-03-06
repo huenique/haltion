@@ -1,4 +1,4 @@
 pub mod jwts;
 pub mod otps;
-pub mod sessions;
+pub mod users;
 pub mod tenants;

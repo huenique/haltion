@@ -1,5 +1,4 @@
-use crate::utils::redis::RedisClient;
-use crate::utils::{jwt, topt};
+use crate::utils::{jwt, redis::RedisClient, topt};
 use axum::http::StatusCode;
 use redis::{ErrorKind, RedisError};
 use reqwest::Client;

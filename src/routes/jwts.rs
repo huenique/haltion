@@ -1,4 +1,4 @@
-use crate::config::env::SECRET_KEY;
+use crate::config::env::APP_SECRET;
 use crate::services::jwts;
 use crate::structs::AppState;
 use axum::{body::Body, http::Request, response::IntoResponse, routing::get, Router};
@@ -10,7 +10,7 @@ pub fn create_route() -> Router<AppState> {
 
 async fn verify_jwt(req: Request<Body>) -> impl IntoResponse {
     let headers = req.headers();
-    let result = jwts::verify_jwt(headers, SECRET_KEY.as_str()).await;
+    let result = jwts::verify_jwt(headers, APP_SECRET.as_str()).await;
 
     (
         result.0,

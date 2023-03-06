@@ -14,8 +14,8 @@ async fn create_tenant(
 ) -> impl IntoResponse {
     let result = tenants::create_tenant(
         &state.http_client,
-        &env::DB_URL.to_string(),
-        &env::DB_AUTH.to_string(),
+        &env::DB_URL,
+        &env::DB_AUTH,
         &payload.name,
     )
     .await;

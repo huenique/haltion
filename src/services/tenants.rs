@@ -41,7 +41,7 @@ pub async fn create_tenant(
     return TenantResult {
         status: resp.status(),
         detail: match resp.json::<String>().await {
-            Ok(json) => json.to_string(),
+            Ok(json) => json,
             Err(err) => err.to_string(),
         },
     };
