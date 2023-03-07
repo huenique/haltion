@@ -100,13 +100,11 @@ pub async fn store_user(params: &mut StoreUserParams<'_>) -> ServiceResult {
         params.redis,
         &params.user.username,
         &params.user.client_domain,
-        &params.v_host,
+        params.v_host,
         params.client,
         params.app_secret,
     )
     .await;
-
-    println!("Verification result: {:?}", result);
 
     result
 }

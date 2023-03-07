@@ -11,8 +11,8 @@ pub async fn create_app() -> Router {
     let redis = Arc::new(Mutex::new(
         RedisClient::new(REDIS_URL.to_owned()).await.unwrap(),
     ));
-    let http_client = Client::new();
-    let state = AppState { redis, http_client };
+    let http = Client::new();
+    let state = AppState { redis, http };
 
     Router::new()
         .nest("/otps", routes::otps::create_route())

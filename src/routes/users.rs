@@ -28,7 +28,7 @@ async fn store_user(
     }
 
     let s_result = users::store_user(&mut users::StoreUserParams {
-        client: &state.http_client,
+        client: &state.http,
         db_auth: &env::DB_AUTH,
         db_url: &env::DB_URL,
         user: &users::User {
