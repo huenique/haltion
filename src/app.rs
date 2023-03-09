@@ -11,12 +11,13 @@ pub async fn create_app() -> Router {
     let redis = Arc::new(Mutex::new(
         RedisClient::new(REDIS_URL.to_owned()).await.unwrap(),
     ));
-    let http_client = Client::new();
-    let state = AppState { redis, http_client };
+    let http = Client::new();
+    let state = AppState { redis, http };
 
     Router::new()
         .nest("/otps", routes::otps::create_route())
         .nest("/jwts", routes::jwts::create_route())
         .nest("/tenants", routes::tenants::create_route())
+        .nest("/users", routes::users::create_route())
         .with_state(state)
 }

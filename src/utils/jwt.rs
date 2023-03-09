@@ -34,14 +34,14 @@ pub async fn sign(sub: String, aud: String) -> Result<String, jsonwebtoken::erro
     jsonwebtoken::encode(
         &Header::default(),
         &UserClaims::new(sub, aud).await,
-        &EncodingKey::from_secret(env::SECRET_KEY.as_bytes()),
+        &EncodingKey::from_secret(env::APP_SECRET.as_bytes()),
     )
 }
 
 pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> {
     jsonwebtoken::decode(
         token,
-        &DecodingKey::from_secret(env::SECRET_KEY.as_bytes()),
+        &DecodingKey::from_secret(env::APP_SECRET.as_bytes()),
         &Validation::default(),
     )
     .map(|data| data.claims)
@@ -51,5 +51,8 @@ pub async fn verify(token: &str) -> Result<String, jsonwebtoken::errors::Error> 
 pub struct TenantClaims {
     iss: String,
     iat: i64,
+    exp: i64,
+    aud: String,
+    sub: String,
     pub tenantid: String,
 }

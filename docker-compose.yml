@@ -37,12 +37,12 @@ services:
       - --log-file=/logs/tikv0.log
     depends_on:
       - "pd0"
-    restart: on-failure
+    restart: always
   
   surrealdb:
     image: surrealdb/surrealdb:latest
     ports:
-      - "10000:10000"
+      - "8000:8000"
     command: 
       - start
       - --log=debug
@@ -51,7 +51,7 @@ services:
       - tikv://pd0:2379
     depends_on:
       - tikv0
-    restart: on-failure
+    restart: always
   
   haltion:
     image: haltion
@@ -63,4 +63,4 @@ services:
     depends_on:
       - tikv0
       - redis
-    restart: on-failure
+    restart: always

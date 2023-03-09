@@ -27,25 +27,25 @@ It aims to help developers implement authentication and authorization features i
 
 1. Create a copy of the `.env.example`, omit the `.example`:
 
-    ```sh
-    cp .env.example .env
-    ```
+   ```sh
+   cp .env.example .env
+   ```
 
 2. Fill in the `.env` file. You may skip the `DATABASE_URL` and `REDIS_URL` variables.
 
-    To generate a `SECRET_KEY`, you may run:
+   To generate a `APP_SECRET`, you may run:
 
-    ```sh
-    openssl rand -hex 20 | xxd -r -p | base32 | tr -d '='
-    ```
+   ```sh
+   openssl rand -hex 20 | xxd -r -p | base32 | tr -d '='
+   ```
 
-    > The server requires a base32 string for RFC-6238 compliance.
+   > The server requires a base32 string for RFC-6238 compliance.
 
 3. Start the server:
 
-    ```sh
-    docker-compose up
-    ```
+   ```sh
+   docker-compose up
+   ```
 
 #### Manually
 
@@ -53,41 +53,41 @@ It aims to help developers implement authentication and authorization features i
 
 2. Create a copy of the `.env.example`, omit the `.example`:
 
-    ```sh
-    cp .env.example .env
-    ```
+   ```sh
+   cp .env.example .env
+   ```
 
 3. Fill in the `.env` file. To generate a secret key, you may run:
 
-    ```sh
-    openssl rand -hex 20 | xxd -r -p | base32 | tr -d '='
-    ```
+   ```sh
+   openssl rand -hex 20 | xxd -r -p | base32 | tr -d '='
+   ```
 
 4. Install Rust dependencies
 
-    ```sh
-    cargo install cargo-watch sea-orm-cli
-    ```
+   ```sh
+   cargo install cargo-watch sea-orm-cli
+   ```
 
-    > cargo-watch is optional, but it is recommended to use it for development. If you are using `cargo-watch`, you may run `cargo watch -x run` instead.
+   > cargo-watch is optional, but it is recommended to use it for development. If you are using `cargo-watch`, you may run `cargo watch -x run` instead.
 
 5. Run the server. This will also install other third-party dependencies:
 
-    ```sh
-    cargo run
-    ```
+   ```sh
+   cargo run
+   ```
 
-    For an optimized build, run:
+   For an optimized build, run:
 
-    ```sh
-    cargo build --release
-    ```
+   ```sh
+   cargo build --release
+   ```
 
-    Execute the binary:
+   Execute the binary:
 
-    ```sh
-    ./target/release/haltion
-    ```
+   ```sh
+   ./target/release/haltion
+   ```
 
 ## Usage
 

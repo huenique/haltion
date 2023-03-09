@@ -6,5 +6,5 @@ use tokio::sync::Mutex;
 #[derive(Clone)]
 pub struct AppState {
     pub(crate) redis: Arc<Mutex<RedisClient>>,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http: reqwest::Client,
 }

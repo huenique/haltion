@@ -12,13 +12,8 @@ async fn create_tenant(
     State(state): State<AppState>,
     payload: Json<tenants::Tenant>,
 ) -> impl IntoResponse {
-    let result = tenants::create_tenant(
-        &state.http_client,
-        &env::DB_URL.to_string(),
-        &env::DB_AUTH.to_string(),
-        &payload.name,
-    )
-    .await;
+    let result =
+        tenants::create_tenant(&state.http, &env::DB_URL, &env::DB_AUTH, &payload.name).await;
 
     (
         result.status,

@@ -1,5 +1,5 @@
 use crate::config::constants::BEARER;
-use crate::config::env::{SECRET_KEY, SMS_HOST};
+use crate::config::env::{APP_SECRET, SMS_HOST};
 use crate::services::otps;
 use crate::structs::AppState;
 use axum::{
@@ -54,7 +54,7 @@ async fn authorize_user(
         &payload.domain,
         &SMS_HOST,
         Client::new(),
-        &SECRET_KEY,
+        &APP_SECRET,
     )
     .await;
     let resp = match result.status {
