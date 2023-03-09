@@ -12,10 +12,11 @@ lazy_static! {
         .encode(format!("{}:{}", DB_USERNAME.as_str(), DB_PASSWORD.as_str()).as_bytes());
     pub static ref REDIS_URL: String = env_or_default("REDIS_URL");
     pub static ref SMS_HOST: String = env_or_default("SMS_HOST");
-    pub static ref EMAIL_HOST: String = env_or_default("EMAIL_HOST");
-    pub static ref EMAIL_USERNAME: String = env_or_default("EMAIL_USERNAME");
-    pub static ref EMAIL_PASSWORD: String = env_or_default("EMAIL_PASSWORD");
-    pub static ref EMAIL_FROM: String = env_or_default("EMAIL_FROM");
+    pub static ref SMTP_HOST: String = env_or_default("SMTP_HOST");
+    pub static ref SMTP_PORT: String = env_or_default("SMTP_PORT");
+    pub static ref SMTP_USERNAME: String = env_or_default("SMTP_USERNAME");
+    pub static ref SMTP_PASSWORD: String = env_or_default("SMTP_PASSWORD");
+    pub static ref SMTP_FROM: String = env_or_default("SMTP_FROM");
 }
 
 fn env_or_default(key: &str) -> String {

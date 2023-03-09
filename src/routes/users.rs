@@ -1,4 +1,4 @@
-use crate::config::env::{APP_SECRET, EMAIL_HOST, SMS_HOST};
+use crate::config::env::{APP_SECRET, SMS_HOST, SMTP_HOST};
 use crate::structs::AppState;
 use crate::{config::env, services::users};
 use axum::{extract::State, http::HeaderMap, response::IntoResponse, routing::post, Json, Router};
@@ -40,7 +40,10 @@ async fn store_user(
         redis: &mut redis,
         v_host: &users::VerificationHost {
             sms: &SMS_HOST,
-            email: &EMAIL_HOST,
+            smtp: &SMTP_HOST,
+            smtp_port: &env::SMTP_PORT.as_str().parse::<u16>().unwrap(),
+            smtp_pass: &env::SMTP_PASSWORD,
+            smtp_user: &env::SMTP_USERNAME,
         },
         app_secret: &APP_SECRET,
     })

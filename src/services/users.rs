@@ -1,15 +1,20 @@
 use crate::utils::{
     jwt::{self, TenantClaims},
+    mailer::{self, Mailer},
     redis::RedisClient,
     topt,
 };
 use axum::http::{HeaderMap, StatusCode};
 use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+use lettre::message::Mailbox;
 use redis::{ErrorKind, RedisError};
 use reqwest::Client;
 use serde::Deserialize;
 use std::collections::HashMap;
 use url::Url;
+
+const EMAIL_SUBJECT: &str = "Your verification code";
+const CODE_SENT: &str = "Verification code sent";
 
 #[derive(Debug)]
 pub struct ServiceResult {
@@ -29,6 +34,15 @@ pub struct User {
     pub username: String,
     pub password: String,
     pub client_domain: String,
+}
+
+pub struct UserVerificationParams<'a> {
+    redis: &'a mut RedisClient,
+    username: &'a String,
+    domain: &'a String,
+    host: &'a VerificationHost<'a>,
+    req: &'a Client,
+    secret_key: &'a String,
 }
 
 /// Parameters for storing a user in the database and sending a verification message.
@@ -59,8 +73,11 @@ pub struct StoreUserParams<'a> {
 }
 
 pub struct VerificationHost<'a> {
-    pub sms: &'a String,
-    pub email: &'a String,
+    pub sms: &'a str,
+    pub smtp: &'a str,
+    pub smtp_port: &'a u16,
+    pub smtp_user: &'a str,
+    pub smtp_pass: &'a str,
 }
 
 pub async fn store_user(params: &mut StoreUserParams<'_>) -> ServiceResult {
@@ -96,14 +113,14 @@ pub async fn store_user(params: &mut StoreUserParams<'_>) -> ServiceResult {
     };
 
     // Send verification code
-    let result = verify_username(
-        params.redis,
-        &params.user.username,
-        &params.user.client_domain,
-        params.v_host,
-        params.client,
-        params.app_secret,
-    )
+    let result = verify_username(UserVerificationParams {
+        redis: params.redis,
+        username: &params.user.username,
+        domain: &params.user.client_domain,
+        host: params.v_host,
+        req: params.client,
+        secret_key: params.app_secret,
+    })
     .await;
 
     result
@@ -226,7 +243,7 @@ fn is_phone_number(s: &str) -> bool {
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut redis = RedisClient::connect("redis://localhost").await?;
 ///
-/// let otp = "123456".to_string();
+/// let otp = "123456".to_str ing();
 /// let phone_number = verify_otp(&mut redis, &otp).await?;
 ///
 /// println!("Phone number: {}", phone_number);
@@ -253,6 +270,7 @@ pub async fn verify_otp(redis: &mut RedisClient, otp: &str) -> ServiceResult {
         status: StatusCode::OK,
     }
 }
+
 /// Generates a one-time password (OTP) and sends it to the user's username via SMS or email, depending on whether the username is a phone number or an email address.
 ///
 /// # Arguments
@@ -280,36 +298,35 @@ pub async fn verify_otp(redis: &mut RedisClient, otp: &str) -> ServiceResult {
 /// let secret_key = "mysecretkey".to_owned();
 /// verify_username(&mut redis, &username, &domain, &host, &req, &secret_key).await?;
 /// ```
-pub async fn verify_username(
-    redis: &mut RedisClient,
-    username: &String,
-    domain: &String,
-    host: &VerificationHost<'_>,
-    req: &Client,
-    secret_key: &String,
-) -> ServiceResult {
+pub async fn verify_username(verif: UserVerificationParams<'_>) -> ServiceResult {
     // Generate OTP
-    let otp = match topt::generate_token(secret_key).await {
+    let otp = match topt::generate_token(verif.secret_key).await {
         Ok(otp) => otp,
         Err(e) => return handle_generic_error(e, "Failed to generate OTP"),
     };
 
     // Add token to redis
-    match redis
-        .set_key_map(&otp, &[(username.to_owned(), domain.to_owned())])
+    match verif
+        .redis
+        .set_key_map(
+            &otp,
+            &[(verif.username.to_owned(), verif.domain.to_owned())],
+        )
         .await
     {
         Ok(_) => (),
         Err(e) => return handle_redis_error(e),
     };
 
-    if is_phone_number(username) {
-        // Send SMS
+    // Send OTP via SMS or email
+    if is_phone_number(verif.username) {
         let mut map = HashMap::new();
-        map.insert("recipient", username);
+        map.insert("recipient", verif.username);
         map.insert("content", &otp);
-        match req
-            .post(format!("{}/messages", host.sms))
+
+        match verif
+            .req
+            .post(format!("{}/messages", verif.host.sms))
             .json(&map)
             .send()
             .await
@@ -319,8 +336,40 @@ pub async fn verify_username(
         };
     }
 
+    match mailer::send_mail(
+        mailer::EnvelopeContent {
+            from: Mailbox {
+                name: Some("Haltion".to_owned()),
+                email: verif.host.smtp_user.parse().unwrap(),
+            },
+            to: Mailbox {
+                name: Some("User".to_owned()),
+                email: verif.username.parse().unwrap(),
+            },
+            subject: EMAIL_SUBJECT.to_owned(),
+            body: otp,
+        },
+        Mailer {
+            host_addr: verif.host.smtp,
+            username: verif.host.smtp_user.to_string(),
+            password: verif.host.smtp_pass.to_string(),
+        },
+    )
+    .await
+    {
+        Ok(resp) => {
+            if !resp.is_positive() {
+                return ServiceResult {
+                    detail: format!("Failed to send email: {}", resp.code()),
+                    status: StatusCode::BAD_GATEWAY,
+                };
+            }
+        }
+        Err(e) => return handle_generic_error(Box::new(e), "Failed to send email"),
+    };
+
     ServiceResult {
-        detail: "OTP sent".to_owned(),
+        detail: CODE_SENT.to_owned(),
         status: StatusCode::OK,
     }
 }
