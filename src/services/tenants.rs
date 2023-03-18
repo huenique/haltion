@@ -2,12 +2,12 @@ use axum::http::StatusCode;
 use reqwest::Client;
 use serde::Deserialize;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct Tenant {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TenantResult {
     pub detail: String,
     pub status: StatusCode,

@@ -1,9 +1,12 @@
-use redis::{aio::AsyncStream, AsyncCommands, Client};
+use redis::{
+    aio::{AsyncStream, Connection},
+    AsyncCommands, Client,
+};
 use tokio::macros::support::Pin;
 
 pub struct RedisClient {
     pub client: Client,
-    pub con: redis::aio::Connection<Pin<Box<dyn AsyncStream + Send + Sync>>>,
+    pub con: Connection<Pin<Box<dyn AsyncStream + Send + Sync>>>,
 }
 
 impl RedisClient {
