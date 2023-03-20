@@ -16,20 +16,20 @@ use url::Url;
 const EMAIL_SUBJECT: &str = "Your verification code";
 const CODE_SENT: &str = "Verification code sent";
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ServiceResult {
     pub detail: String,
     pub status: StatusCode,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DatabaseConfig {
     pub url: String,
     pub username: String,
     pub password: String,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct User {
     pub username: String,
     pub password: String,
@@ -72,6 +72,7 @@ pub struct StoreUserParams<'a> {
     pub app_secret: &'a String,
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct VerificationHost<'a> {
     pub sms: &'a str,
     pub smtp: &'a str,

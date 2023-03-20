@@ -4,6 +4,7 @@ use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
 };
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct EnvelopeContent {
     pub from: Mailbox,
     pub to: Mailbox,
@@ -11,13 +12,12 @@ pub struct EnvelopeContent {
     pub body: String,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct Mailer<'a> {
     pub host_addr: &'a str,
     pub username: String,
     pub password: String,
 }
-
-
 
 pub async fn send_mail(ec: EnvelopeContent, mailer: Mailer<'_>) -> Result<Response, Error> {
     let email = Message::builder()

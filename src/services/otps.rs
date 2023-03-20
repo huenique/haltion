@@ -4,7 +4,7 @@ use redis::{ErrorKind, RedisError};
 use reqwest::Client;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct OtpResult {
     pub detail: String,
     pub status: StatusCode,
